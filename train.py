@@ -174,7 +174,7 @@ def relation_train(dcn,task_generator):
             loss = loss0+loss1+loss2+loss3
 
             
-        elif args.loss == 'Entropy':
+        elif args.loss == 'CE':
             criterion = nn.CrossEntropyLoss()
             target_labels = query_y.view(-1)
             batch_size = target_labels.shape[0]
