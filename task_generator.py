@@ -66,8 +66,7 @@ class FewShotTask(object):
         global_labels = np.array(range(len(self.data_folder)))
         global_labels = dict(zip(self.data_folder, global_labels))
 
-        samples = replaybuffer.sample(self.num_class)
-        class_floders = [sample['folder'] for sample in samples]
+        class_folders = random.sample(self.data_folder,self.num_class)
         labels = np.array(range(len(class_folders)))
         labels = dict(zip(class_folders, labels))
         samples = dict()
