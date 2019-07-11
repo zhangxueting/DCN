@@ -225,7 +225,7 @@ class EmbeddingSENet(nn.Module):
 # Description: Dense Relation Module based on SENet. Here we have 4 relation modules.
 # -------------------------
 class RelationSENet(nn.Module):
-    def __init__(self, block, layers, num_class):
+    def __init__(self, block, layers, num_class,weight_or_not="weight",loss="CE"):
         super(RelationSENet, self).__init__()
         self.relation1 = self._make_layer(block,64*2,128,layers[0],stride=2)
         self.relation2 = self._make_layer(block,128*3,256,layers[1],stride=2)
@@ -249,6 +249,8 @@ class RelationSENet(nn.Module):
         self.fc_w4 = nn.Linear(512 * block.expansion, 1)
 
         self.num_class = num_class
+        self.weight_or_not = weight_or_not
+        self.loss = loss
 
     def _make_layer(self, block, inplanes, planes, blocks, stride=1):
 
@@ -279,48 +281,59 @@ class RelationSENet(nn.Module):
         # score1 = torch.sigmoid(self.fc1(similarity_feature1))
         score1 = self.fc1(similarity_feature1)
         w1 = torch.sigmoid(self.fc_w1(similarity_feature1))
-        score1 = w1 * score1
 
         similarity_feature2 = self.avgpool2(similarity_feature2)
         similarity_feature2 = similarity_feature2.view(similarity_feature2.size(0), -1)
         # score2 = torch.sigmoid(self.fc2(similarity_feature2))
         score2 = self.fc2(similarity_feature2)
         w2 = torch.sigmoid(self.fc_w2(similarity_feature2))
-        score2 = w2 * score2
+        
 
         similarity_feature3 = self.avgpool3(similarity_feature3)
         similarity_feature3 = similarity_feature3.view(similarity_feature3.size(0), -1)
         # score3 = torch.sigmoid(self.fc3(similarity_feature3))
         score3 = self.fc3(similarity_feature3)
         w3 = torch.sigmoid(self.fc_w3(similarity_feature3))
-        score3 = w3 * score3
 
         similarity_feature4 = self.avgpool4(similarity_feature4)
         similarity_feature4 = similarity_feature4.view(similarity_feature4.size(0), -1)
         # score4 = torch.sigmoid(self.fc4(similarity_feature4))
         score4 = self.fc4(similarity_feature4)
         w4 = torch.sigmoid(self.fc_w4(similarity_feature4))
-        score4 = w4 * score4
+
+        if self.loss == "BCE":
+            score1 = torch.sigmoid(score1)
+            score2 = torch.sigmoid(score2)
+            score3 = torch.sigmoid(score3)
+            score4 = torch.sigmoid(score4)
+
+        if self.weight_or_not == "weight":
+            score1 = w1 * score1
+            score2 = w2 * score2
+            score3 = w3 * score3
+            score4 = w4 * score4
         
         return score1,score2,score3,score4
 
 # ----------------------
-# Class: VariationalDenseRelationNetwork
+# Class: DCN
 # Description: the main class to construct a variational/standard dense relation network
 #              for 1 shot or k shot classification.
 # ----------------------
 
-class VariationalDenseRelationNetwork(nn.Module):
-    def __init__(self,num_class,num_support,num_query,num_embedding_class,with_variation=True):
-        super(VariationalDenseRelationNetwork, self).__init__()
+class DCN(nn.Module):
+    def __init__(self,num_class,num_support,num_query,num_embedding_class,with_variation=True,weight_or_not="weight",loss="CE"):
+        super(DCN, self).__init__()
 
         self.num_class = num_class
         self.num_support = num_support
         self.num_query = num_query
         self.with_variation = with_variation
+        self.weight_or_not = weight_or_not
+        self.loss = loss
 
         self.embedding = EmbeddingSENet(SEBasicBlock,[3, 4, 6, 3],num_embedding_class,with_variation)
-        self.relation = RelationSENet(SEBasicBlock,[2 , 2, 2, 2],num_class)
+        self.relation = RelationSENet(SEBasicBlock,[2 , 2, 2, 2],num_class,self.weight_or_not,self.loss)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):

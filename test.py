@@ -11,7 +11,7 @@ import config
 import scipy as sp
 import scipy.stats
 from task_generator import TaskGenerator,split_fine_grained_dataset,mini_imagenet_folder
-from variational_dense_relation_network import VariationalDenseRelationNetwork,EmbeddingSENet
+from network import DCN,EmbeddingSENet
 
 parser = argparse.ArgumentParser(description="Variational Dense Relation Network for Few-Shot Learning")
 parser.add_argument("--way",type = int, default = 5)  # num_class
@@ -38,12 +38,12 @@ def mean_confidence_interval(data, confidence=0.95):
     h = se * sp.stats.t._ppf((1+confidence)/2., n-1)
     return m, h
 
-def test(variational_dense_relation_network,task_generator):
+def test(dcn,task_generator):
     print ('test process: ')
     accuracies = []
 
     with torch.no_grad():
-        variational_dense_relation_network.eval()
+        dcn.eval()
 
         for test_episode in range(args.test_episode):
             total_rewards = 0
@@ -58,7 +58,7 @@ def test(variational_dense_relation_network,task_generator):
             if args.variational == 1:
                 query_predict_ys = 0
                 for i in range(args.multi_try):
-                    score1,score2,score3,score4 = variational_dense_relation_network(support_x,query_x)
+                    score1,score2,score3,score4 = dcn(support_x,query_x)
                     score1 = score1.view(-1,args.way)
                     score2 = score2.view(-1,args.way)
                     score3 = score3.view(-1,args.way)
@@ -67,7 +67,7 @@ def test(variational_dense_relation_network,task_generator):
 
                 query_predict_y = query_predict_ys/args.multi_try
             else:
-                score1,score2,score3,score4 = variational_dense_relation_network(support_x,query_x)
+                score1,score2,score3,score4 = dcn(support_x,query_x)
                 score1 = score1.view(-1,args.way)
                 score2 = score2.view(-1,args.way)
                 score3 = score3.view(-1,args.way)
@@ -116,15 +116,15 @@ def main():
 
     # step 2: init neural networks
     print ('init neural networks')
-    variational_dense_relation_network = VariationalDenseRelationNetwork(args.way,args.shot,args.query,args.embedding_class,with_variation=bool(args.variational))
-    variational_dense_relation_network.embedding = nn.DataParallel(variational_dense_relation_network.embedding,device_ids=[args.gpu,args.gpu+1])
-    variational_dense_relation_network.relation = nn.DataParallel(variational_dense_relation_network.relation,device_ids=[args.gpu,args.gpu+1])
-    variational_dense_relation_network.load_state_dict(torch.load("../models/VDRN-"+str(args.model_episode)+"-"+str(args.embedding_class) + "-" + args.dataset + "-" + args.loss +"-"+ str(args.variational) + "-shot"+ str(args.shot)+ "-"+ str(weight_or_not) + ".pkl",map_location={'cuda:':'cuda:'+str(args.gpu)}))
-#     variational_dense_relation_network.load_state_dict(torch.load("../models/VDRN-"+str(args.model_episode)+"-"+str(args.embedding_class) + "-" + args.dataset + "-"+ str(args.variational) + "-shot"+ str(args.shot)+ ".pkl",map_location={'cuda:':'cuda:'+str(args.gpu)}))
+    dcn = DCN(args.way,args.shot,args.query,args.embedding_class,with_variation=bool(args.variational),weight_or_not=args.weight_or_not,loss = args.loss)
+    dcn.embedding = nn.DataParallel(dcn.embedding,device_ids=[args.gpu,args.gpu+1])
+    dcn.relation = nn.DataParallel(dcn.relation,device_ids=[args.gpu,args.gpu+1])
+    dcn.load_state_dict(torch.load("../models/VDRN-"+str(args.model_episode)+"-"+str(args.embedding_class) + "-" + args.dataset + "-" + args.loss +"-var"+ str(args.variational) + "-shot"+ str(args.shot)+ "-"+ str(weight_or_not) + ".pkl",map_location={'cuda:':'cuda:'+str(args.gpu)}))
+#     dcn.load_state_dict(torch.load("../models/VDRN-"+str(args.model_episode)+"-"+str(args.embedding_class) + "-" + args.dataset + "-"+ str(args.variational) + "-shot"+ str(args.shot)+ ".pkl",map_location={'cuda:':'cuda:'+str(args.gpu)}))
     print("load model ok!")
-    variational_dense_relation_network.to(device)
+    dcn.to(device)
 
-    test(variational_dense_relation_network,task_generator)
+    test(dcn,task_generator)
 
 if __name__ == '__main__':
     main()
