@@ -55,7 +55,7 @@ def mini_imagenet_folder(train_folder,test_folder):
 # -----------------------
 class FewShotTask(object):
 
-    def __init__(self, data_folder, num_class, num_train, num_test,type="meta_train", replaybuffer=None):
+    def __init__(self, data_folder, num_class, num_train, num_test,type="meta_train"):
 
         self.data_folder = data_folder
         self.num_class = num_class
@@ -65,11 +65,9 @@ class FewShotTask(object):
         
         global_labels = np.array(range(len(self.data_folder)))
         global_labels = dict(zip(self.data_folder, global_labels))
-        if replaybuffer is None:
-            class_folders = random.sample(self.data_folder,self.num_class)
-        else:
-            samples = replaybuffer.sample(self.num_class)
-            class_floders = [sample['folder'] for sample in samples]
+
+        samples = replaybuffer.sample(self.num_class)
+        class_floders = [sample['folder'] for sample in samples]
         labels = np.array(range(len(class_folders)))
         labels = dict(zip(class_folders, labels))
         samples = dict()
@@ -134,25 +132,21 @@ class TaskGenerator():
         self.metatrain_folder = metatrain_folder
         self.metatest_folder = metatest_folder
 
-    def sample_task(self,num_class,num_support,num_query,type="meta_train", replay_buffer=None):
+    def sample_task(self,num_class,num_support,num_query,type="meta_train"):
 
         if type == "meta_train":
-            task = FewShotTask(self.metatrain_folder,num_class,num_support,num_query,type=type, replay_buffer=self.replay_buffer)
+            task = FewShotTask(self.metatrain_folder,num_class,num_support,num_query,type=type)
         else:
             task = FewShotTask(self.metatest_folder,num_class,num_support,num_query,type=type)
         support_dataloader = self.get_data_loader(task,split="train",shuffle=False)
         query_dataloader = self.get_data_loader(task,split="test",shuffle=True)
         # sample datas
-        if replay_buffer == None:
-            support_x,support_y, _ = support_dataloader.__iter__().next() #sample once to obtain all data
-            query_x,query_y, _ = query_dataloader.__iter__().next()
 
-            return support_x,support_y,query_x,query_y
-        else:
-            support_x,support_y, support_global_y = support_dataloader.__iter__().next() #sample once to obtain all data
-            query_x,query_y, query_global_y = query_dataloader.__iter__().next()
+        support_x,support_y, _ = support_dataloader.__iter__().next() #sample once to obtain all data
+        query_x,query_y, _ = query_dataloader.__iter__().next()
 
-            return support_x,support_y,query_x,query_y, support_gloabl_y, query_global_y
+        return support_x,support_y,query_x,query_y
+
     
     def get_data_loader(self,task,split='train',shuffle = False):
 

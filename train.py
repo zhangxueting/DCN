@@ -9,7 +9,7 @@ from torch.optim.lr_scheduler import StepLR
 import numpy as np
 import config
 from task_generator import TaskGenerator,split_fine_grained_dataset,mini_imagenet_folder
-from variational_dense_relation_network import VariationalDenseRelationNetwork,EmbeddingSENet
+from network import DCN,EmbeddingSENet
 
 parser = argparse.ArgumentParser(description="Variational Dense Relation Network for Few-Shot Learning")
 parser.add_argument("--way",type = int, default = 5)  # num_class
@@ -29,8 +29,7 @@ parser.add_argument("--valid_set",type=int,default=1) # 1: use valid set for tra
 parser.add_argument("--variational",type=int,default=1) # 1: variational version 0: standard version
 parser.add_argument("--train_embedding",type=int,default=0) # 1: train 0:not train
 parser.add_argument("--conti_train",type=int,default=0) # continue to train relation from last save model
-parser.add_argument("--loss", type=str, default='COT')
-parser.add_argument("--replay_buffer", action='store_true')
+parser.add_argument("--loss", type=str, default='COT') # BCE,CE,COT
 parser.add_argument("--weight_or_not", str='weight') # to distinct "weight" or "noweight"
 args = parser.parse_args()
 
@@ -59,8 +58,8 @@ class ComplementEntropy(nn.Module):
         loss /= float(self.classes)
         return loss
     
-def embedding_train(variational_dense_relation_network,task_generator):
-    embedding = variational_dense_relation_network.embedding
+def embedding_train(dcn,task_generator):
+    embedding = dcn.embedding
     optim = torch.optim.SGD(embedding.parameters(), lr=args.embedding_learning_rate, momentum=0.9, weight_decay=1e-4)
     schedule = StepLR(optim, step_size = 60, gamma=0.2)
 
@@ -134,39 +133,34 @@ def embedding_train(variational_dense_relation_network,task_generator):
             torch.save(embedding.state_dict(),"../models/Embedding-"+str(args.embedding_class) + "-" + args.dataset + "-" + str(args.variational) +  ".pkl")
 
 
-def relation_train(variational_dense_relation_network,task_generator):
+def relation_train(dcn,task_generator):
     if args.conti_train == 0:
-        variational_dense_relation_network.embedding.load_state_dict(torch.load("../models/Embedding-"+str(args.embedding_class) + "-" + args.dataset + "-" + str(args.variational) + ".pkl",map_location={'cuda:':'cuda:'+str(args.gpu)}))
+        dcn.embedding.load_state_dict(torch.load("../models/Embedding-"+str(args.embedding_class) + "-" + args.dataset + "-" + str(args.variational) + ".pkl",map_location={'cuda:':'cuda:'+str(args.gpu)}))
 
         print("load embedding ok")
     else:
-        variational_dense_relation_network.load_state_dict(torch.load("../models/VDRN-"+str(args.conti_train)+"-"+str(args.embedding_class) + "-" + args.dataset +"-"+ str(args.variational) + "-shot"+ str(args.shot)+ "-" + str(args.weight_or_not) + ".pkl",map_location={'cuda:':'cuda:'+str(args.gpu)}))
+        dcn.load_state_dict(torch.load("../models/VDRN-"+str(args.conti_train)+"-"+str(args.embedding_class) + "-" + args.dataset +"-var"+ str(args.variational) + "-shot"+ str(args.shot)+ "-" + str(args.weight_or_not) + ".pkl",map_location={'cuda:':'cuda:'+str(args.gpu)}))
         print("load model ok!")
 
-    optim = torch.optim.SGD(variational_dense_relation_network.relation.parameters(),lr=args.relation_learning_rate,momentum=0.9, weight_decay=1e-4)
-    entropy_optimizer = torch.optim.SGD(variational_dense_relation_network.relation.parameters(), lr=args.relation_learning_rate, momentum=0.9, weight_decay=1e-4)
+    optim = torch.optim.SGD(dcn.relation.parameters(),lr=args.relation_learning_rate,momentum=0.9, weight_decay=1e-4)
+    entropy_optimizer = torch.optim.SGD(dcn.relation.parameters(), lr=args.relation_learning_rate, momentum=0.9, weight_decay=1e-4)
     schedule = StepLR(optim, step_size = 25000, gamma=0.2)
 
     # step 3: train process
     print ('relation training: ')
     total_rewards = 0
-    if args.replay_buffer:
-        replay_buffer = PrioritisedReplayBuffer(capacity=len(task_generator.metatrain_folder), alpha=1, beta=1)
-        for i, folder in enumerate(task_generator.metatrain_folder):
-            self.replay_buffer.add_sample({'folder':folder}, init_weight=10)
-    else:
-        replay_buffer=None
+
         
     for train_episode in range(args.conti_train,args.relation_episode):
-        variational_dense_relation_network.train()
+        dcn.train()
         schedule.step(train_episode)
 
         # init dataset
-        support_x,support_y,query_x,query_y = task_generator.sample_task(args.way,args.shot,args.query, replay_buffer)
+        support_x,support_y,query_x,query_y = task_generator.sample_task(args.way,args.shot,args.query)
         support_x = support_x.to(device)
         query_x = query_x.to(device)
 
-        query_predict_y0,query_predict_y1,query_predict_y2,query_predict_y3 = variational_dense_relation_network(support_x,query_x)
+        query_predict_y0,query_predict_y1,query_predict_y2,query_predict_y3 = dcn(support_x,query_x)
         
         if args.loss == 'BCE':
             criterion = nn.BCELoss(reduction=None)
@@ -177,6 +171,8 @@ def relation_train(variational_dense_relation_network,task_generator):
             loss1 = criterion(query_predict_y1, one_hot_labels)
             loss2 = criterion(query_predict_y2, one_hot_labels)
             loss3 = criterion(query_predict_y3, one_hot_labels)
+            loss = loss0+loss1+loss2+loss3
+
             
         elif args.loss == 'Entropy':
             criterion = nn.CrossEntropyLoss()
@@ -207,7 +203,7 @@ def relation_train(variational_dense_relation_network,task_generator):
             entropy_loss.backward()
             entropy_optimizer.step()
             
-            query_predict_y0,query_predict_y1,query_predict_y2,query_predict_y3 = variational_dense_relation_network(support_x,query_x)
+            query_predict_y0,query_predict_y1,query_predict_y2,query_predict_y3 = dcn(support_x,query_x)
             target_labels = query_y.view(-1)
             batch_size = target_labels.shape[0]
             target_labels = target_labels.to(device)
@@ -238,9 +234,9 @@ def relation_train(variational_dense_relation_network,task_generator):
         # training
         
         
-        variational_dense_relation_network.zero_grad()
+        dcn.zero_grad()
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(variational_dense_relation_network.parameters(), 0.5)
+        torch.nn.utils.clip_grad_norm_(dcn.parameters(), 0.5)
         optim.step()
 
 
@@ -256,7 +252,7 @@ def relation_train(variational_dense_relation_network,task_generator):
 
         if (train_episode+1) % 10000 == 0:
             # save networks
-            torch.save(variational_dense_relation_network.state_dict(),"../models/VDRN-"+str(train_episode+1)+"-"+str(args.embedding_class) + "-" + args.dataset + "-" + args.loss +"-"+ str(args.variational) + "-shot"+ str(args.shot) + "-" +str(args.weight_or_not) + ".pkl")
+            torch.save(dcn.state_dict(),"../models/VDRN-"+str(train_episode+1)+"-"+str(args.embedding_class) + "-" + args.dataset + "-" + args.loss +"-var"+ str(args.variational) + "-shot"+ str(args.shot) + "-" +str(args.weight_or_not) + ".pkl")
 
             print("save networks for episode:",train_episode)
 
@@ -288,15 +284,15 @@ def main():
 
     # step 2: init neural networks
     print ('init neural networks')
-    variational_dense_relation_network = VariationalDenseRelationNetwork(args.way,args.shot,args.query,args.embedding_class,with_variation=bool(args.variational))
-    variational_dense_relation_network.embedding = nn.DataParallel(variational_dense_relation_network.embedding,device_ids=[args.gpu,args.gpu+1])
-    variational_dense_relation_network.relation = nn.DataParallel(variational_dense_relation_network.relation,device_ids=[args.gpu,args.gpu+1])
-    variational_dense_relation_network.to(device)
+    dcn = DCN(args.way,args.shot,args.query,args.embedding_class,with_variation=bool(args.variational),weight_or_not=args.weight_or_not,loss = args.loss)
+    dcn.embedding = nn.DataParallel(dcn.embedding,device_ids=[args.gpu,args.gpu+1])
+    dcn.relation = nn.DataParallel(dcn.relation,device_ids=[args.gpu,args.gpu+1])
+    dcn.to(device)
 
     if args.train_embedding:
-        embedding_train(variational_dense_relation_network,task_generator)
+        embedding_train(dcn,task_generator)
         torch.cuda.empty_cache()
-    relation_train(variational_dense_relation_network,task_generator)
+    relation_train(dcn,task_generator)
 
 if __name__ == '__main__':
     main()
