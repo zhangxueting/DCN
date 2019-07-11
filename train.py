@@ -30,7 +30,7 @@ parser.add_argument("--variational",type=int,default=1) # 1: variational version
 parser.add_argument("--train_embedding",type=int,default=0) # 1: train 0:not train
 parser.add_argument("--conti_train",type=int,default=0) # continue to train relation from last save model
 parser.add_argument("--loss", type=str, default='COT') # BCE,CE,COT
-parser.add_argument("--weight_or_not", str='weight') # to distinct "weight" or "noweight"
+parser.add_argument("--weight_or_not", type=str,default='weight') # to distinct "weight" or "noweight"
 args = parser.parse_args()
 
 device = torch.device('cuda:' + str(args.gpu) if torch.cuda.is_available() else 'cpu')

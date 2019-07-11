@@ -26,7 +26,7 @@ parser.add_argument("--valid_set",type=int,default=1) # 1: use valid set for tra
 parser.add_argument("--variational",type=int,default=1) # 1: variational version 0: standard version
 parser.add_argument("--multi_try",type=int,default=1) # multi try for variatioal version's test
 parser.add_argument("--loss", type=str, default='Entropy')
-parser.add_argument("--weight_or_not", str='weight') # to distinct "weight" or "noweight"
+parser.add_argument("--weight_or_not", type=str,default='weight') # to distinct "weight" or "noweight"
 args = parser.parse_args()
 
 device = torch.device('cuda:' + str(args.gpu) if torch.cuda.is_available() else 'cpu')
