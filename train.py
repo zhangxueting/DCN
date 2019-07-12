@@ -163,16 +163,17 @@ def relation_train(dcn,task_generator):
         query_predict_y0,query_predict_y1,query_predict_y2,query_predict_y3 = dcn(support_x,query_x)
         
         if args.loss == 'BCE':
-            criterion = nn.BCELoss(reduction=None)
+            criterion = nn.BCELoss()
         
             one_hot_labels = torch.zeros(args.query*args.way,args.way).scatter_(1, query_y.view(-1,1),1).view(-1,1)
             one_hot_labels = one_hot_labels.to(device)
-            loss0 = criterion(query_predict_y0, one_hot_labels)
-            loss1 = criterion(query_predict_y1, one_hot_labels)
-            loss2 = criterion(query_predict_y2, one_hot_labels)
-            loss3 = criterion(query_predict_y3, one_hot_labels)
-            loss = loss0+loss1+loss2+loss3
-
+            # loss0 = criterion(query_predict_y0, one_hot_labels)
+            # loss1 = criterion(query_predict_y1, one_hot_labels)
+            # loss2 = criterion(query_predict_y2, one_hot_labels)
+            # loss3 = criterion(query_predict_y3, one_hot_labels)
+            # loss = loss0+loss1+loss2+loss3
+            query_predict_y = query_predict_y0+query_predict_y1+query_predict_y2+query_predict_y3
+            loss = criterion(query_predict_y, one_hot_labels)
             
         elif args.loss == 'CE':
             criterion = nn.CrossEntropyLoss()
@@ -180,11 +181,13 @@ def relation_train(dcn,task_generator):
             batch_size = target_labels.shape[0]
             target_labels = target_labels.to(device)
             # print('target labels : ', target_labels)
-            loss0 = criterion(query_predict_y0.view(batch_size, -1), target_labels)
-            loss1 = criterion(query_predict_y1.view(batch_size, -1), target_labels)
-            loss2 = criterion(query_predict_y2.view(batch_size, -1), target_labels)
-            loss3 = criterion(query_predict_y3.view(batch_size, -1), target_labels)
-            loss = loss0+loss1+loss2+loss3
+            # loss0 = criterion(query_predict_y0.view(batch_size, -1), target_labels)
+            # loss1 = criterion(query_predict_y1.view(batch_size, -1), target_labels)
+            # loss2 = criterion(query_predict_y2.view(batch_size, -1), target_labels)
+            # loss3 = criterion(query_predict_y3.view(batch_size, -1), target_labels)
+            # loss = loss0+loss1+loss2+loss3
+            query_predict_y = query_predict_y0+query_predict_y1+query_predict_y2+query_predict_y3
+            loss = criterion(query_predict_y, one_hot_labels)
             
         elif args.loss == 'COT':
             
@@ -194,11 +197,14 @@ def relation_train(dcn,task_generator):
             criterion = nn.CrossEntropyLoss()
             
             
-            entropy_loss0 = criterion(query_predict_y0.view(batch_size, -1), target_labels)
-            entropy_loss1 = criterion(query_predict_y1.view(batch_size, -1), target_labels)
-            entropy_loss2 = criterion(query_predict_y2.view(batch_size, -1), target_labels)
-            entropy_loss3 = criterion(query_predict_y3.view(batch_size, -1), target_labels)
-            entropy_loss = entropy_loss0+entropy_loss1+entropy_loss2+entropy_loss3
+            # entropy_loss0 = criterion(query_predict_y0.view(batch_size, -1), target_labels)
+            # entropy_loss1 = criterion(query_predict_y1.view(batch_size, -1), target_labels)
+            # entropy_loss2 = criterion(query_predict_y2.view(batch_size, -1), target_labels)
+            # entropy_loss3 = criterion(query_predict_y3.view(batch_size, -1), target_labels)
+            # entropy_loss = entropy_loss0+entropy_loss1+entropy_loss2+entropy_loss3
+            query_predict_y = query_predict_y0+query_predict_y1+query_predict_y2+query_predict_y3
+            entropy_loss = criterion(query_predict_y, target_labels)
+            
             entropy_optimizer.zero_grad()
             entropy_loss.backward()
             entropy_optimizer.step()
@@ -208,12 +214,13 @@ def relation_train(dcn,task_generator):
             batch_size = target_labels.shape[0]
             target_labels = target_labels.to(device)
             complement_criterion = ComplementEntropy()
-            loss0 = complement_criterion(query_predict_y0.view(batch_size, -1), target_labels)
-            loss1 = complement_criterion(query_predict_y1.view(batch_size, -1), target_labels)         
-            loss2 = complement_criterion(query_predict_y2.view(batch_size, -1), target_labels)
-            loss3 = complement_criterion(query_predict_y3.view(batch_size, -1), target_labels)
-            loss = loss0 + loss1 + loss2 + loss3
-            
+            # loss0 = complement_criterion(query_predict_y0.view(batch_size, -1), target_labels)
+            # loss1 = complement_criterion(query_predict_y1.view(batch_size, -1), target_labels)         
+            # loss2 = complement_criterion(query_predict_y2.view(batch_size, -1), target_labels)
+            # loss3 = complement_criterion(query_predict_y3.view(batch_size, -1), target_labels)
+            # loss = loss0 + loss1 + loss2 + loss3
+            query_predict_y = query_predict_y0+query_predict_y1+query_predict_y2+query_predict_y3
+            loss = criterion(query_predict_y, target_labels)
             
 #         elif args.loss == 'COT':
 #             criterion = ComplementEntropy()
@@ -252,7 +259,7 @@ def relation_train(dcn,task_generator):
 
         if (train_episode+1) % 10000 == 0:
             # save networks
-            torch.save(dcn.state_dict(),"../models/VDRN-"+str(train_episode+1)+"-"+str(args.embedding_class) + "-" + args.dataset + "-" + args.loss +"-var"+ str(args.variational) + "-shot"+ str(args.shot) + "-" +str(args.weight_or_not) + ".pkl")
+            torch.save(dcn.state_dict(),"../models/VDRN-"+str(train_episode+1)+"-"+str(args.embedding_class) + "-" + args.dataset + "-" + args.loss +"-var"+ str(args.variational) + "-shot"+ str(args.shot) + "-" +str(args.weight_or_not) + "_on_score.pkl")
 
             print("save networks for episode:",train_episode)
 

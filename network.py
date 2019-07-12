@@ -234,19 +234,22 @@ class RelationSENet(nn.Module):
 
         self.avgpool1 = nn.AvgPool2d(28)
         self.fc1 = nn.Linear(128 * block.expansion,1)
-        self.fc_w1 = nn.Linear(128 * block.expansion, 1)
-
+        # self.fc_w1 = nn.Linear(128 * block.expansion, 1)
+        self.w1 = nn.Parameter(torch.Tensor([0.25]))
         self.avgpool2 = nn.AvgPool2d(14)
         self.fc2 = nn.Linear(256 * block.expansion,1)
-        self.fc_w2 = nn.Linear(256 * block.expansion, 1)
+        # self.fc_w2 = nn.Linear(256 * block.expansion, 1)
+        self.w2 = nn.Parameter(torch.Tensor([0.25]))
 
         self.avgpool3 = nn.AvgPool2d(7)
         self.fc3 = nn.Linear(512 * block.expansion,1)
-        self.fc_w3 = nn.Linear(512 * block.expansion, 1)
+        # self.fc_w3 = nn.Linear(512 * block.expansion, 1)
+        self.w3 = nn.Parameter(torch.Tensor([0.25]))
         
         self.avgpool4 = nn.AvgPool2d(7)
         self.fc4 = nn.Linear(512 * block.expansion,1)
-        self.fc_w4 = nn.Linear(512 * block.expansion, 1)
+        # self.fc_w4 = nn.Linear(512 * block.expansion, 1)
+        self.w4 = nn.Parameter(torch.Tensor([0.25]))
 
         self.num_class = num_class
         self.weight_or_not = weight_or_not
@@ -280,26 +283,26 @@ class RelationSENet(nn.Module):
         similarity_feature1 = similarity_feature1.view(similarity_feature1.size(0), -1)
         # score1 = torch.sigmoid(self.fc1(similarity_feature1))
         score1 = self.fc1(similarity_feature1)
-        w1 = torch.sigmoid(self.fc_w1(similarity_feature1))
+        # w1 = torch.sigmoid(self.fc_w1(similarity_feature1))
 
         similarity_feature2 = self.avgpool2(similarity_feature2)
         similarity_feature2 = similarity_feature2.view(similarity_feature2.size(0), -1)
         # score2 = torch.sigmoid(self.fc2(similarity_feature2))
         score2 = self.fc2(similarity_feature2)
-        w2 = torch.sigmoid(self.fc_w2(similarity_feature2))
+        # w2 = torch.sigmoid(self.fc_w2(similarity_feature2))
         
 
         similarity_feature3 = self.avgpool3(similarity_feature3)
         similarity_feature3 = similarity_feature3.view(similarity_feature3.size(0), -1)
         # score3 = torch.sigmoid(self.fc3(similarity_feature3))
         score3 = self.fc3(similarity_feature3)
-        w3 = torch.sigmoid(self.fc_w3(similarity_feature3))
+        # w3 = torch.sigmoid(self.fc_w3(similarity_feature3))
 
         similarity_feature4 = self.avgpool4(similarity_feature4)
         similarity_feature4 = similarity_feature4.view(similarity_feature4.size(0), -1)
         # score4 = torch.sigmoid(self.fc4(similarity_feature4))
         score4 = self.fc4(similarity_feature4)
-        w4 = torch.sigmoid(self.fc_w4(similarity_feature4))
+        # w4 = torch.sigmoid(self.fc_w4(similarity_feature4))
 
         if self.loss == "BCE":
             score1 = torch.sigmoid(score1)
@@ -308,10 +311,10 @@ class RelationSENet(nn.Module):
             score4 = torch.sigmoid(score4)
 
         if self.weight_or_not == "weight":
-            score1 = w1 * score1
-            score2 = w2 * score2
-            score3 = w3 * score3
-            score4 = w4 * score4
+            score1 = self.w1 * score1
+            score2 = self.w2 * score2
+            score3 = self.w3 * score3
+            score4 = self.w4 * score4
         
         return score1,score2,score3,score4
 
