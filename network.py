@@ -304,17 +304,18 @@ class RelationSENet(nn.Module):
         score4 = self.fc4(similarity_feature4)
         # w4 = torch.sigmoid(self.fc_w4(similarity_feature4))
 
-        if self.loss == "BCE":
-            score1 = torch.sigmoid(score1)
-            score2 = torch.sigmoid(score2)
-            score3 = torch.sigmoid(score3)
-            score4 = torch.sigmoid(score4)
-
         if self.weight_or_not == "weight":
             score1 = self.w1 * score1
             score2 = self.w2 * score2
             score3 = self.w3 * score3
             score4 = self.w4 * score4
+        
+        # if self.loss == "BCE":
+        #     score1 = torch.sigmoid(score1)
+        #     score2 = torch.sigmoid(score2)
+        #     score3 = torch.sigmoid(score3)
+        #     score4 = torch.sigmoid(score4)
+
         
         return score1,score2,score3,score4
 

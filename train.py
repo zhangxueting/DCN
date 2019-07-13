@@ -173,7 +173,7 @@ def relation_train(dcn,task_generator):
             # loss3 = criterion(query_predict_y3, one_hot_labels)
             # loss = loss0+loss1+loss2+loss3
             query_predict_y = query_predict_y0+query_predict_y1+query_predict_y2+query_predict_y3
-            loss = criterion(query_predict_y, one_hot_labels)
+            loss = criterion(torch.sigmoid(query_predict_y), one_hot_labels)
             
         elif args.loss == 'CE':
             criterion = nn.CrossEntropyLoss()
