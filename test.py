@@ -26,7 +26,7 @@ parser.add_argument("--valid_set",type=int,default=1) # 1: use valid set for tra
 parser.add_argument("--variational",type=int,default=1) # 1: variational version 0: standard version
 parser.add_argument("--multi_try",type=int,default=1) # multi try for variatioal version's test
 parser.add_argument("--loss", type=str, default='Entropy')
-parser.add_argument("--weight_or_not", str='weight') # to distinct "weight" or "noweight"
+parser.add_argument("--weight_or_not", type=str,default='weight') # to distinct "weight" or "noweight"
 args = parser.parse_args()
 
 device = torch.device('cuda:' + str(args.gpu) if torch.cuda.is_available() else 'cpu')
@@ -119,7 +119,7 @@ def main():
     dcn = DCN(args.way,args.shot,args.query,args.embedding_class,with_variation=bool(args.variational),weight_or_not=args.weight_or_not,loss = args.loss)
     dcn.embedding = nn.DataParallel(dcn.embedding,device_ids=[args.gpu,args.gpu+1])
     dcn.relation = nn.DataParallel(dcn.relation,device_ids=[args.gpu,args.gpu+1])
-    dcn.load_state_dict(torch.load("../models/VDRN-"+str(args.model_episode)+"-"+str(args.embedding_class) + "-" + args.dataset + "-" + args.loss +"-var"+ str(args.variational) + "-shot"+ str(args.shot)+ "-"+ str(weight_or_not) + ".pkl",map_location={'cuda:':'cuda:'+str(args.gpu)}))
+    dcn.load_state_dict(torch.load("../models/VDRN-"+str(args.model_episode)+"-"+str(args.embedding_class) + "-" + args.dataset + "-" + args.loss +"-var"+ str(args.variational) + "-shot"+ str(args.shot)+ "-"+ str(args.weight_or_not) + ".pkl",map_location={'cuda:':'cuda:'+str(args.gpu)}))
 #     dcn.load_state_dict(torch.load("../models/VDRN-"+str(args.model_episode)+"-"+str(args.embedding_class) + "-" + args.dataset + "-"+ str(args.variational) + "-shot"+ str(args.shot)+ ".pkl",map_location={'cuda:':'cuda:'+str(args.gpu)}))
     print("load model ok!")
     dcn.to(device)
