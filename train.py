@@ -24,7 +24,7 @@ parser.add_argument("--embedding_learning_rate", type = float, default = 0.1)
 parser.add_argument("--embedding_batch_size",type=int,default = 256)
 parser.add_argument("--embedding_train_num",type=int,default=590) # for miniimagenet, 600 images per class. 590 for train,10 for test
 parser.add_argument("--embedding_test_num",type=int,default=10)
-parser.add_argument("--gpu",type=int, default=0)
+parser.add_argument("--gpu",type=int, default=3)#4 gpu parallel computing by -1
 parser.add_argument("--dataset",type=str,default="tieredimagenet") # tieredimagenet,cub,car,aircraft
 parser.add_argument("--valid_set",type=int,default=1) # 1: use valid set for training,  0: not use valid set
 parser.add_argument("--variational",type=int,default=1) # 1: variational version 0: standard version
@@ -293,8 +293,8 @@ def main():
     print ('init neural networks')
 
     dcn = VariationalDenseRelationNetwork(args.way,args.shot,args.query,args.embedding_class,with_variation=bool(args.variational))
-    dcn.embedding = nn.DataParallel(dcn.embedding,device_ids=[args.gpu,args.gpu+1])
-    dcn.relation = nn.DataParallel(dcn.relation,device_ids=[args.gpu,args.gpu+1])
+    dcn.embedding = nn.DataParallel(dcn.embedding,device_ids=[args.gpu,args.gpu-1])
+    dcn.relation = nn.DataParallel(dcn.relation,device_ids=[args.gpu-2,args.gpu-3])
     dcn.to(device)
 
     if args.train_embedding:
