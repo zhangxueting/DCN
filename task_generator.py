@@ -4,6 +4,7 @@ import random
 import os
 from torch.utils.data import DataLoader,Dataset
 import torchvision.transforms as transforms
+import torchvision as tv
 from PIL import Image
 import numpy as np
 
@@ -62,9 +63,6 @@ class FewShotTask(object):
         self.num_train = num_train
         self.num_test = num_test
         self.type=type
-        
-        global_labels = np.array(range(len(self.data_folder)))
-        global_labels = dict(zip(self.data_folder, global_labels))
 
         class_folders = random.sample(self.data_folder,self.num_class)
         labels = np.array(range(len(class_folders)))
@@ -83,8 +81,6 @@ class FewShotTask(object):
 
         self.train_labels = [labels[self.get_class(x)] for x in self.train_roots]
         self.test_labels = [labels[self.get_class(x)] for x in self.test_roots]
-        self.train_global_labels = [global_labels[self.get_class(x)] for x in self.train_roots]
-        self.test_global_labels = [global_labels[self.get_class(x)] for x in self.test_roots]
 
     def get_class(self, sample):
         return os.path.join(*sample.split('/')[:-1])
@@ -102,7 +98,6 @@ class FewShotDataset(Dataset):
         self.split = split
         self.image_roots = self.task.train_roots if self.split == 'train' else self.task.test_roots
         self.labels = self.task.train_labels if self.split == 'train' else self.task.test_labels
-        self.global_labels = self.task.train_global_labels if self.split == 'train' else self.task.test_global_labels
 
     def __len__(self):
         return len(self.image_roots)
@@ -114,10 +109,9 @@ class FewShotDataset(Dataset):
         if self.transform is not None:
             image = self.transform(image)
         label = self.labels[idx]
-        global_label = self.global_labels[idx]
         if self.target_transform is not None:
             label = self.target_transform(label)
-        return image, label, global_label
+        return image, label
 
 # -------------------------
 # Class: TaskGenerator
@@ -126,10 +120,11 @@ class FewShotDataset(Dataset):
 # -------------------------
 class TaskGenerator():
 
-    def __init__(self,metatrain_folder,metatest_folder):
+    def __init__(self,metatrain_folder,metatest_folder,classifier_root):
         super(TaskGenerator, self).__init__()
         self.metatrain_folder = metatrain_folder
         self.metatest_folder = metatest_folder
+        self.classifier_root = classifier_root
 
     def sample_task(self,num_class,num_support,num_query,type="meta_train"):
 
@@ -140,13 +135,11 @@ class TaskGenerator():
         support_dataloader = self.get_data_loader(task,split="train",shuffle=False)
         query_dataloader = self.get_data_loader(task,split="test",shuffle=True)
         # sample datas
-
-        support_x,support_y, _ = support_dataloader.__iter__().next() #sample once to obtain all data
-        query_x,query_y, _ = query_dataloader.__iter__().next()
+        support_x,support_y = support_dataloader.__iter__().next() #sample once to obtain all data
+        query_x,query_y = query_dataloader.__iter__().next()
 
         return support_x,support_y,query_x,query_y
 
-    
     def get_data_loader(self,task,split='train',shuffle = False):
 
         transform = transforms.Compose([
@@ -181,7 +174,7 @@ class TaskGenerator():
 
         return loader
 
-    def get_classifier_dataset(self,batch_size,num_class,num_train,num_test):
+    def get_classifier_dataset(self,batch_size):
 
         transform = transforms.Compose([
                     transforms.ToTensor(),
@@ -195,26 +188,13 @@ class TaskGenerator():
                 transform
             ])
 
-        test_transform = transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transform
-        ])
 
-
-        task = FewShotTask(self.metatrain_folder,num_class,num_train,num_test)
-        train_dataset = FewShotDataset(task,split="train",transform=train_transform)
+        train_dataset = tv.datasets.ImageFolder(self.classifier_root,transform=train_transform)
         train_dataloader = torch.utils.data.DataLoader(train_dataset,
                                           batch_size=batch_size,
                                           shuffle=True,
                                           num_workers=4,
                                           pin_memory=torch.cuda.is_available())
 
-        test_dataset = FewShotDataset(task,split="test",transform=test_transform)
-        test_dataloader = torch.utils.data.DataLoader(test_dataset,
-                                          batch_size=batch_size,
-                                          shuffle=True,
-                                          num_workers=4,
-                                          pin_memory=torch.cuda.is_available())
 
-        return train_dataloader,test_dataloader
+        return train_dataloader

@@ -128,18 +128,18 @@ def embedding_train(dcn,task_generator):
             best_accuracy = test_accuracy
 
             print("save embedding network")
-            if not os.path.exists("../models/"):
-                os.makedirs("../models/")
-            torch.save(embedding.state_dict(),"../models/Embedding-"+str(args.embedding_class) + "-" + args.dataset + "-" + str(args.variational) +  ".pkl")
+            if not os.path.exists("../models_tiered/"):
+                os.makedirs("../models_tiered/")
+            torch.save(embedding.state_dict(),"../models_tiered/Embedding-"+str(args.embedding_class) + "-" + args.dataset + "-" + str(args.variational) +  ".pkl")
 
 
 def relation_train(dcn,task_generator):
     if args.conti_train == 0:
-        dcn.embedding.load_state_dict(torch.load("../models/Embedding-"+str(args.embedding_class) + "-" + args.dataset + "-" + str(args.variational) + ".pkl",map_location={'cuda:':'cuda:'+str(args.gpu)}))
+        dcn.embedding.load_state_dict(torch.load("../models_tiered/Embedding-"+str(args.embedding_class) + "-" + args.dataset + "-" + str(args.variational) + ".pkl",map_location={'cuda:':'cuda:'+str(args.gpu)}))
 
         print("load embedding ok")
     else:
-        dcn.load_state_dict(torch.load("../models/VDRN-"+str(args.conti_train)+"-"+str(args.embedding_class) + "-" + args.dataset +"-var"+ str(args.variational) + "-shot"+ str(args.shot)+ "-" + str(args.weight_or_not) + ".pkl",map_location={'cuda:':'cuda:'+str(args.gpu)}))
+        dcn.load_state_dict(torch.load("../models_tiered/VDRN-"+str(args.conti_train)+"-"+str(args.embedding_class) + "-" + args.dataset +"-var"+ str(args.variational) + "-shot"+ str(args.shot)+ "-" + str(args.weight_or_not) + ".pkl",map_location={'cuda:':'cuda:'+str(args.gpu)}))
         print("load model ok!")
 
     optim = torch.optim.SGD(dcn.relation.parameters(),lr=args.relation_learning_rate,momentum=0.9, weight_decay=1e-4)
@@ -252,7 +252,7 @@ def relation_train(dcn,task_generator):
 
         if (train_episode+1) % 10000 == 0:
             # save networks
-            torch.save(dcn.state_dict(),"../models/VDRN-"+str(train_episode+1)+"-"+str(args.embedding_class) + "-" + args.dataset + "-" + args.loss +"-var"+ str(args.variational) + "-shot"+ str(args.shot) + "-" +str(args.weight_or_not) + ".pkl")
+            torch.save(dcn.state_dict(),"../models_tiered/VDRN-"+str(train_episode+1)+"-"+str(args.embedding_class) + "-" + args.dataset + "-" + args.loss +"-var"+ str(args.variational) + "-shot"+ str(args.shot) + "-" +str(args.weight_or_not) + ".pkl")
 
             print("save networks for episode:",train_episode)
 
@@ -271,10 +271,16 @@ def main():
         task_generator = TaskGenerator(metatrain_folder,metatest_folder)
 
     elif args.dataset == 'tieredimagenet':
-        pass
+        if args.valid_set == 1:
+            root = config.tieredimagenet_trainvalfolder
+            metatrain_folder,metatest_folder = mini_imagenet_folder(config.tieredimagenet_trainvalfolder,
+                                                                config.tieredimagenet_testfolder)
+        else:
+            root = config.tieredimagenet_trainfolder
+            metatrain_folder,metatest_folder = mini_imagenet_folder(config.tieredimagenet_trainfolder,
+                                                                config.tieredimagenet_valfolder)
+        task_generator = TaskGenerator(metatrain_folder,metatest_folder,root)
 
-    elif args.dataset == 'cub':
-        pass
 
     elif args.dataset == 'car':
         pass
