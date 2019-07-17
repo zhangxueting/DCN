@@ -292,7 +292,7 @@ def main():
     # step 2: init neural networks
     print ('init neural networks')
 
-    dcn = VariationalDenseRelationNetwork(args.way,args.shot,args.query,args.embedding_class,with_variation=bool(args.variational))
+    dcn = dcn(args.way,args.shot,args.query,args.embedding_class,with_variation=bool(args.variational))
     dcn.embedding = nn.DataParallel(dcn.embedding,device_ids=[args.gpu,args.gpu-1])
     dcn.relation = nn.DataParallel(dcn.relation,device_ids=[args.gpu-2,args.gpu-3])
     dcn.to(device)
