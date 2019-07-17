@@ -11,25 +11,26 @@ import config
 from task_generator import TaskGenerator,split_fine_grained_dataset,mini_imagenet_folder
 from network import DCN,EmbeddingSENet
 
+
 parser = argparse.ArgumentParser(description="Variational Dense Relation Network for Few-Shot Learning")
 parser.add_argument("--way",type = int, default = 5)  # num_class
 parser.add_argument("--shot",type = int, default = 1) # num_support_per_class
 parser.add_argument("--query",type = int, default = 5) # num_query_per_class
-parser.add_argument("--embedding_class",type =int, default = 80) # num_class for embedding pre-training
+parser.add_argument("--embedding_class",type =int, default = 448) # num_class for embedding pre-training
 parser.add_argument("--relation_episode",type = int, default= 100000)
-parser.add_argument("--relation_learning_rate", type = float, default = 0.1)
+parser.add_argument("--relation_learning_rate", type = float, default = 0.2)
 parser.add_argument("--embedding_episode", type = int, default = 200)
 parser.add_argument("--embedding_learning_rate", type = float, default = 0.1)
 parser.add_argument("--embedding_batch_size",type=int,default = 256)
 parser.add_argument("--embedding_train_num",type=int,default=590) # for miniimagenet, 600 images per class. 590 for train,10 for test
 parser.add_argument("--embedding_test_num",type=int,default=10)
 parser.add_argument("--gpu",type=int, default=0)
-parser.add_argument("--dataset",type=str,default="miniimagenet") # tieredimagenet,cub,car,aircraft
+parser.add_argument("--dataset",type=str,default="tieredimagenet") # tieredimagenet,cub,car,aircraft
 parser.add_argument("--valid_set",type=int,default=1) # 1: use valid set for training,  0: not use valid set
 parser.add_argument("--variational",type=int,default=1) # 1: variational version 0: standard version
 parser.add_argument("--train_embedding",type=int,default=0) # 1: train 0:not train
 parser.add_argument("--conti_train",type=int,default=0) # continue to train relation from last save model
-parser.add_argument("--loss", type=str, default='COT') # BCE,CE,COT
+parser.add_argument("--loss", type=str, default='CE') # BCE,CE,COT
 parser.add_argument("--weight_or_not", type=str,default='weight') # to distinct "weight" or "noweight"
 args = parser.parse_args()
 
