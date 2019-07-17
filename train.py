@@ -130,12 +130,12 @@ def embedding_train(dcn,task_generator):
             print("save embedding network")
             if not os.path.exists("../models_tiered/"):
                 os.makedirs("../models_tiered/")
-            torch.save(embedding.state_dict(),"../models_tiered/Embedding-"+str(args.embedding_class) + "-" + args.dataset + "-" + str(args.variational) +  ".pkl")
+            torch.save(embedding.state_dict(),"../models_tiered/Embedding-"+str(args.embedding_class) + "-" + args.dataset + "-" + str(args.variational) +"-new.pkl")
 
 
 def relation_train(dcn,task_generator):
     if args.conti_train == 0:
-        dcn.embedding.load_state_dict(torch.load("../models_tiered/Embedding-"+str(args.embedding_class) + "-" + args.dataset + "-" + str(args.variational) + ".pkl",map_location={'cuda:':'cuda:'+str(args.gpu)}))
+        dcn.embedding.load_state_dict(torch.load("../models_tiered/Embedding-"+str(args.embedding_class) + "-" + args.dataset + "-" + str(args.variational) + "-new.pkl",map_location={'cuda:':'cuda:'+str(args.gpu)}))
 
         print("load embedding ok")
     else:
