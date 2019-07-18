@@ -247,6 +247,8 @@ class RelationSENet(nn.Module):
         self.avgpool4 = nn.AvgPool2d(7)
         self.fc4 = nn.Linear(512 * block.expansion,1)
         self.fc_w4 = nn.Linear(512 * block.expansion, 1)
+        
+        
 
         self.num_class = num_class
         self.weight_or_not = weight_or_not

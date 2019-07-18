@@ -29,8 +29,9 @@ parser.add_argument("--valid_set",type=int,default=1) # 1: use valid set for tra
 parser.add_argument("--variational",type=int,default=1) # 1: variational version 0: standard version
 parser.add_argument("--train_embedding",type=int,default=0) # 1: train 0:not train
 parser.add_argument("--conti_train",type=int,default=0) # continue to train relation from last save model
-parser.add_argument("--loss", type=str, default='COT') # BCE,CE,COT
+parser.add_argument("--loss", type=str, default='CE') # BCE,CE,COT,smoothed_CE
 parser.add_argument("--weight_or_not", type=str,default='weight') # to distinct "weight" or "noweight"
+parser.add_argument("--eps", type=float, default=0.0)#epsilon of label smoothing
 args = parser.parse_args()
 
 device = torch.device('cuda:' + str(args.gpu) if torch.cuda.is_available() else 'cpu')
@@ -87,6 +88,7 @@ def embedding_train(dcn,task_generator):
 
             predict,_,std_mean,_ = embedding(image)
             criterion = nn.CrossEntropyLoss()
+            
             loss = criterion(predict,label)
 
             total_loss = loss - 0.05*torch.mean(std_mean) # for standard version,std_mean = 0.0
@@ -167,6 +169,7 @@ def relation_train(dcn,task_generator):
         
             one_hot_labels = torch.zeros(args.query*args.way,args.way).scatter_(1, query_y.view(-1,1),1).view(-1,1)
             one_hot_labels = one_hot_labels.to(device)
+            
             loss0 = criterion(query_predict_y0, one_hot_labels)
             loss1 = criterion(query_predict_y1, one_hot_labels)
             loss2 = criterion(query_predict_y2, one_hot_labels)
@@ -179,6 +182,7 @@ def relation_train(dcn,task_generator):
             target_labels = query_y.view(-1)
             batch_size = target_labels.shape[0]
             target_labels = target_labels.to(device)
+            
             # print('target labels : ', target_labels)
             loss0 = criterion(query_predict_y0.view(batch_size, -1), target_labels)
             loss1 = criterion(query_predict_y1.view(batch_size, -1), target_labels)
@@ -192,8 +196,7 @@ def relation_train(dcn,task_generator):
             batch_size = target_labels.shape[0]
             target_labels = target_labels.to(device)
             criterion = nn.CrossEntropyLoss()
-            
-            
+
             entropy_loss0 = criterion(query_predict_y0.view(batch_size, -1), target_labels)
             entropy_loss1 = criterion(query_predict_y1.view(batch_size, -1), target_labels)
             entropy_loss2 = criterion(query_predict_y2.view(batch_size, -1), target_labels)
@@ -214,19 +217,36 @@ def relation_train(dcn,task_generator):
             loss3 = complement_criterion(query_predict_y3.view(batch_size, -1), target_labels)
             loss = loss0 + loss1 + loss2 + loss3
             
+
+        elif args.loss == 'smooth_CE':
+            criterion = nn.CrossEntropyLoss()
+            target_labels = query_y.view(-1)
+            batch_size = target_labels.shape[0]
+            target_labels = target_labels.to(device)
+
+            #smoothed labels
+            target_labels = one_hot(target_labels.reshape(-1), args.way)
+            target_labels = target_labels * (1 - args.eps) + (1 - target_labels) * args.eps / (args.way - 1)
+            smoothed_one_hot = target_labels
+
+            # print('target labels : ', target_labels)
+            log_prb = F.log_softmax(query_predict_y0.reshape(-1, args.way), dim=1)
+            loss0 = -(smoothed_one_hot * log_prb).sum(dim=1)
+            loss0 = loss0.mean()
+
+            log_prb = F.log_softmax(query_predict_y1.reshape(-1, args.way), dim=1)
+            loss1 = -(smoothed_one_hot * log_prb).sum(dim=1)
+            loss1 = loss1.mean()
             
-#         elif args.loss == 'COT':
-#             criterion = ComplementEntropy()
-#             target_labels = query_y.view(-1)
-#             batch_size = target_labels.shape[0]
-#             target_labels = target_labels.to(device)
-#             #one_hot_labels = torch.zeros(args.query*args.way, args.way).scatter_(1, query_y.view(-1, 1), 1)
-#             #one_hot_labels = one_hot_labels.to(device)
-#             #batch_size = args.query*args.way
-#             loss0 = criterion(query_predict_y0.view(batch_size, -1), target_labels)
-#             loss1 = criterion(query_predict_y1.view(batch_size, -1), target_labels)
-#             loss2 = criterion(query_predict_y2.view(batch_size, -1), target_labels)
-#             loss3 = criterion(query_predict_y3.view(batch_size, -1), target_labels)
+            log_prb = F.log_softmax(query_predict_y2.reshape(-1, args.way), dim=1)
+            loss2 = -(smoothed_one_hot * log_prb).sum(dim=1)
+            loss2 = loss2.mean()
+            
+            log_prb = F.log_softmax(query_predict_y3.reshape(-1, args.way), dim=1)
+            loss3 = -(smoothed_one_hot * log_prb).sum(dim=1)
+            loss3 = loss3.mean()
+
+            loss = loss0+loss1+loss2+loss3
 
         else:
             print('Error loss')
