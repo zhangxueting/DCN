@@ -32,8 +32,8 @@ parser.add_argument("--conti_train",type=int,default=0) # continue to train rela
 parser.add_argument("--loss", type=str, default='COT') # BCE,CE,COT
 parser.add_argument("--weight_or_not", type=str,default='weight') # to distinct "weight" or "noweight"
 parser.add_argument('--drop_rate', type=float, default=0.1)
-parser.add_argument('--drop_block', store_action=True)
-parser.add_argument('--drop_size', type=int, default=1)
+parser.add_argument('--drop_block', action='store_true')
+parser.add_argument('--block_size', type=int, default=1)
 args = parser.parse_args()
 
 device = torch.device('cuda:' + str(args.gpu) if torch.cuda.is_available() else 'cpu')
