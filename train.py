@@ -31,6 +31,9 @@ parser.add_argument("--train_embedding",type=int,default=0) # 1: train 0:not tra
 parser.add_argument("--conti_train",type=int,default=0) # continue to train relation from last save model
 parser.add_argument("--loss", type=str, default='COT') # BCE,CE,COT
 parser.add_argument("--weight_or_not", type=str,default='weight') # to distinct "weight" or "noweight"
+parser.add_argument('--drop_rate', type=float, default=0.1)
+parser.add_argument('--drop_block', store_action=True)
+parser.add_argument('--drop_size', type=int, default=1)
 args = parser.parse_args()
 
 device = torch.device('cuda:' + str(args.gpu) if torch.cuda.is_available() else 'cpu')
@@ -163,7 +166,7 @@ def relation_train(dcn,task_generator):
         query_predict_y0,query_predict_y1,query_predict_y2,query_predict_y3 = dcn(support_x,query_x)
         
         if args.loss == 'BCE':
-            criterion = nn.BCELoss(reduction=None)
+            criterion = nn.BCELoss()
         
             one_hot_labels = torch.zeros(args.query*args.way,args.way).scatter_(1, query_y.view(-1,1),1).view(-1,1)
             one_hot_labels = one_hot_labels.to(device)
@@ -284,7 +287,7 @@ def main():
 
     # step 2: init neural networks
     print ('init neural networks')
-    dcn = DCN(args.way,args.shot,args.query,args.embedding_class,with_variation=bool(args.variational),weight_or_not=args.weight_or_not,loss = args.loss)
+    dcn = DCN(args.way,args.shot,args.query,args.embedding_class,with_variation=bool(args.variational),weight_or_not=args.weight_or_not,loss = args.loss, drop_rate=args.drop_rate, drop_block=args.drop_block, block_size=args.block_size)
     dcn.embedding = nn.DataParallel(dcn.embedding,device_ids=[args.gpu,args.gpu+1])
     dcn.relation = nn.DataParallel(dcn.relation,device_ids=[args.gpu,args.gpu+1])
     dcn.to(device)

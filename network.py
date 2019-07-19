@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+from ropblock import DropBlock
 
 def conv3x3(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""
@@ -34,7 +35,7 @@ class SEModule(nn.Module):
 class SEBasicBlock(nn.Module):
     expansion = 1
 
-    def __init__(self, inplanes, planes, stride=1,with_variation=False):
+    def __init__(self, inplanes, planes, stride=1,with_variation=False, drop_rate=0.0, drop_block=False, block_size=1):
         super(SEBasicBlock, self).__init__()
         self.conv1 = conv3x3(inplanes, planes, stride)
         self.bn1 = nn.BatchNorm2d(planes)
@@ -55,6 +56,9 @@ class SEBasicBlock(nn.Module):
             )
 
         self.stride = stride
+		self.drop_block = drop_block
+		self.block_size = block_size
+		self.DropBlock = DropBlock(block_size=self.block_size)
 
     def forward(self, x):
 
@@ -69,6 +73,14 @@ class SEBasicBlock(nn.Module):
         out += self.downsample(x)
         out = self.relu(out)
 
+		if self.drop_rate > 0:
+            if self.drop_block == True:
+                feat_size = out.size()[2]
+                keep_rate = max(1.0 - self.drop_rate / (20*2000) * (self.num_batches_tracked), 1.0 - self.drop_rate)
+                gamma = (1 - keep_rate) / self.block_size**2 * feat_size**2 / (feat_size - self.block_size + 1)**2
+                out = self.DropBlock(out, gamma=gamma)
+            else:
+                out = F.dropout(out, p=self.drop_rate, training=self.training, inplace=True)
         return out
 
 
@@ -225,12 +237,12 @@ class EmbeddingSENet(nn.Module):
 # Description: Dense Relation Module based on SENet. Here we have 4 relation modules.
 # -------------------------
 class RelationSENet(nn.Module):
-    def __init__(self, block, layers, num_class,weight_or_not="weight",loss="CE"):
+    def __init__(self, block, layers, num_class,weight_or_not="weight",loss="CE", drop_rate=0.0, drop_block=False, block_size=1):
         super(RelationSENet, self).__init__()
-        self.relation1 = self._make_layer(block,64*2,128,layers[0],stride=2)
-        self.relation2 = self._make_layer(block,128*3,256,layers[1],stride=2)
-        self.relation3 = self._make_layer(block,256*3,512,layers[2],stride=2)
-        self.relation4 = self._make_layer(block,512*3,512,layers[3],stride=1)
+        self.relation1 = self._make_layer(block,64*2,128,layers[0],stride=2, drop_rate=drop_rate, drop_block=drop_block, block_size=block_size)
+        self.relation2 = self._make_layer(block,128*3,256,layers[1],stride=2, drop_rate=drop_rate, drop_block=drop_block, block_size=block_size)
+        self.relation3 = self._make_layer(block,256*3,512,layers[2],stride=2, drop_rate=drop_rate, drop_block=drop_block, block_size=block_size)
+        self.relation4 = self._make_layer(block,512*3,512,layers[3],stride=1, drop_rate=drop_rate, drop_block=drop_block, block_size=block_size)
 
         self.avgpool1 = nn.AvgPool2d(28)
         self.fc1 = nn.Linear(128 * block.expansion,1)
@@ -252,13 +264,13 @@ class RelationSENet(nn.Module):
         self.weight_or_not = weight_or_not
         self.loss = loss
 
-    def _make_layer(self, block, inplanes, planes, blocks, stride=1):
+    def _make_layer(self, block, inplanes, planes, blocks, stride=1, drop_rate=0.0, drop_block=False, block_size=1):
 
         layers = []
-        layers.append(block(inplanes, planes, stride))
+        layers.append(block(inplanes, planes, stride, drop_rate=drop_rate, drop_block=drop_block, block_size=block_size))
         inplanes = planes * block.expansion
         for i in range(1, blocks):
-            layers.append(block(inplanes, planes))
+            layers.append(block(inplanes, planes, drop_rate=drop_rate, drop_block=drop_block, block_size=block_size))
 
         return nn.Sequential(*layers)
 
@@ -322,7 +334,7 @@ class RelationSENet(nn.Module):
 # ----------------------
 
 class DCN(nn.Module):
-    def __init__(self,num_class,num_support,num_query,num_embedding_class,with_variation=True,weight_or_not="weight",loss="CE"):
+    def __init__(self,num_class,num_support,num_query,num_embedding_class,with_variation=True,weight_or_not="weight",loss="CE", drop_rate=0.0, drop_block=False, block_size=1):
         super(DCN, self).__init__()
 
         self.num_class = num_class
@@ -333,7 +345,7 @@ class DCN(nn.Module):
         self.loss = loss
 
         self.embedding = EmbeddingSENet(SEBasicBlock,[3, 4, 6, 3],num_embedding_class,with_variation)
-        self.relation = RelationSENet(SEBasicBlock,[2 , 2, 2, 2],num_class,self.weight_or_not,self.loss)
+        self.relation = RelationSENet(SEBasicBlock,[2 , 2, 2, 2],num_class,self.weight_or_not,self.loss, drop_rate, drop_block, block_size)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
