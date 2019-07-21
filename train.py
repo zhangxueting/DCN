@@ -32,10 +32,14 @@ parser.add_argument("--conti_train",type=int,default=0) # continue to train rela
 parser.add_argument("--loss", type=str, default='COT') # BCE,CE,COT
 parser.add_argument("--weight_or_not", type=str,default='weight') # to distinct "weight" or "noweight"
 parser.add_argument('--drop_rate', type=float, default=0.1)
+<<<<<<< HEAD
 parser.add_argument('--drop_block', store_action=True)
 parser.add_argument('--drop_size', type=int, default=1)
+=======
+parser.add_argument('--drop_block', action='store_true')
+parser.add_argument('--block_size', type=int, default=1)
+>>>>>>> f1bf033a2781a3547bd71861fb230ef036d350f0
 args = parser.parse_args()
-
 device = torch.device('cuda:' + str(args.gpu) if torch.cuda.is_available() else 'cpu')
 
 class ComplementEntropy(nn.Module):
@@ -138,7 +142,7 @@ def embedding_train(dcn,task_generator):
 
 def relation_train(dcn,task_generator):
     if args.conti_train == 0:
-        dcn.embedding.load_state_dict(torch.load("../models/Embedding-"+str(args.embedding_class) + "-" + args.dataset + "-" + str(args.variational) + ".pkl",map_location={'cuda:':'cuda:'+str(args.gpu)}))
+        dcn.embedding.load_state_dict(torch.load("../models/Embedding-"+str(args.embedding_class) + "-" + args.dataset + "-" + str(args.variational) + ".pkl",map_location={'cuda:2':'cuda:'+str(args.gpu)}))
 
         print("load embedding ok")
     else:
@@ -255,7 +259,7 @@ def relation_train(dcn,task_generator):
 
         if (train_episode+1) % 10000 == 0:
             # save networks
-            torch.save(dcn.state_dict(),"../models/VDRN-"+str(train_episode+1)+"-"+str(args.embedding_class) + "-" + args.dataset + "-" + args.loss +"-var"+ str(args.variational) + "-shot"+ str(args.shot) + "-" +str(args.weight_or_not) + ".pkl")
+            torch.save(dcn.state_dict(),"../models/VDRN-"+str(train_episode+1)+"-"+str(args.embedding_class) + "-" + args.dataset + "-" + args.loss +"-var"+ str(args.variational) + "-shot"+ str(args.shot) + "-" +str(args.weight_or_not) +('_drop_block' if args.drop_block else '_drop')+ ".pkl")
 
             print("save networks for episode:",train_episode)
 
@@ -288,13 +292,13 @@ def main():
     # step 2: init neural networks
     print ('init neural networks')
     dcn = DCN(args.way,args.shot,args.query,args.embedding_class,with_variation=bool(args.variational),weight_or_not=args.weight_or_not,loss = args.loss, drop_rate=args.drop_rate, drop_block=args.drop_block, block_size=args.block_size)
-    dcn.embedding = nn.DataParallel(dcn.embedding,device_ids=[args.gpu,args.gpu+1])
-    dcn.relation = nn.DataParallel(dcn.relation,device_ids=[args.gpu,args.gpu+1])
+    dcn.embedding = nn.DataParallel(dcn.embedding,device_ids=[args.gpu,args.gpu+3])
+    dcn.relation = nn.DataParallel(dcn.relation,device_ids=[args.gpu,args.gpu+3])
     dcn.to(device)
 
     if args.train_embedding:
         embedding_train(dcn,task_generator)
-        torch.cuda.empty_cache()
+    torch.cuda.empty_cache()
     relation_train(dcn,task_generator)
 
 if __name__ == '__main__':

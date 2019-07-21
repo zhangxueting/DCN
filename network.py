@@ -2,7 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+<<<<<<< HEAD
 from ropblock import DropBlock
+=======
+from dropblock import DropBlock
+>>>>>>> f1bf033a2781a3547bd71861fb230ef036d350f0
 
 def conv3x3(in_planes, out_planes, stride=1):
     """3x3 convolution with padding"""
@@ -56,12 +60,21 @@ class SEBasicBlock(nn.Module):
             )
 
         self.stride = stride
+<<<<<<< HEAD
 		self.drop_block = drop_block
 		self.block_size = block_size
 		self.DropBlock = DropBlock(block_size=self.block_size)
+=======
+        self.drop_block = drop_block
+        self.block_size = block_size
+        self.drop_rate = drop_rate
+        self.DropBlock = DropBlock(block_size=self.block_size)
+        self.num_batches_tracked = 0
+>>>>>>> f1bf033a2781a3547bd71861fb230ef036d350f0
 
     def forward(self, x):
-
+        self.num_batches_tracked += 1
+        
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
@@ -72,8 +85,13 @@ class SEBasicBlock(nn.Module):
 
         out += self.downsample(x)
         out = self.relu(out)
+<<<<<<< HEAD
 
 		if self.drop_rate > 0:
+=======
+        
+        if self.drop_rate > 0:
+>>>>>>> f1bf033a2781a3547bd71861fb230ef036d350f0
             if self.drop_block == True:
                 feat_size = out.size()[2]
                 keep_rate = max(1.0 - self.drop_rate / (20*2000) * (self.num_batches_tracked), 1.0 - self.drop_rate)
