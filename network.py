@@ -58,10 +58,13 @@ class SEBasicBlock(nn.Module):
         self.stride = stride
         self.drop_block = drop_block
         self.block_size = block_size
+        self.drop_rate = drop_rate
         self.DropBlock = DropBlock(block_size=self.block_size)
+        self.num_batches_tracked = 0
 
     def forward(self, x):
-
+        self.num_batches_tracked += 1
+        
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
