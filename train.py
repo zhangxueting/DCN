@@ -11,7 +11,7 @@ import config
 from task_generator import TaskGenerator,split_fine_grained_dataset,mini_imagenet_folder
 from network import DCN,EmbeddingSENet
 
-parser = argparse.ArgumentParser(description="Variational Dense Relation Network for Few-Shot Learning")
+parser = argparse.ArgumentParser(description="RelationNet2/DCN for Few-Shot Learning")
 parser.add_argument("--way",type = int, default = 5)  # num_class
 parser.add_argument("--shot",type = int, default = 1) # num_support_per_class
 parser.add_argument("--query",type = int, default = 5) # num_query_per_class
@@ -29,7 +29,7 @@ parser.add_argument("--valid_set",type=int,default=1) # 1: use valid set for tra
 parser.add_argument("--variational",type=int,default=1) # 1: variational version 0: standard version
 parser.add_argument("--train_embedding",type=int,default=0) # 1: train 0:not train
 parser.add_argument("--conti_train",type=int,default=0) # continue to train relation from last save model
-parser.add_argument("--loss", type=str, default='COT') # BCE,CE,COT
+parser.add_argument("--loss", type=str, default='CE') # BCE,CE,COT
 parser.add_argument("--weight_or_not", type=str,default='weight') # to distinct "weight" or "noweight"
 args = parser.parse_args()
 
@@ -214,19 +214,7 @@ def relation_train(dcn,task_generator):
             loss3 = complement_criterion(query_predict_y3.view(batch_size, -1), target_labels)
             loss = loss0 + loss1 + loss2 + loss3
             
-            
-#         elif args.loss == 'COT':
-#             criterion = ComplementEntropy()
-#             target_labels = query_y.view(-1)
-#             batch_size = target_labels.shape[0]
-#             target_labels = target_labels.to(device)
-#             #one_hot_labels = torch.zeros(args.query*args.way, args.way).scatter_(1, query_y.view(-1, 1), 1)
-#             #one_hot_labels = one_hot_labels.to(device)
-#             #batch_size = args.query*args.way
-#             loss0 = criterion(query_predict_y0.view(batch_size, -1), target_labels)
-#             loss1 = criterion(query_predict_y1.view(batch_size, -1), target_labels)
-#             loss2 = criterion(query_predict_y2.view(batch_size, -1), target_labels)
-#             loss3 = criterion(query_predict_y3.view(batch_size, -1), target_labels)
+     
 
         else:
             print('Error loss')
