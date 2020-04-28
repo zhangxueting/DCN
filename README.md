@@ -2,9 +2,9 @@
 PyTorch code for IJCNN 2020 paper: [RelationNet2: Deep Comparison Columns for few shot learning](https://arxiv.org/pdf/1811.07100v2.pdf) 
 
 ## Requirements
-Python 2.7
+Python 3.6
 
-Pytorch 0.3
+Pytorch 1.0
 
 ## Data
 For mini-Imagenet experiments, please download [mini-Imagenet](https://drive.google.com/open?id=0B3Irx3uQNoBMQ1FlNXJsZUdYWEE) and put it in ./datas/mini-Imagenet and run proc_image.py to preprocess generate train/val/test datasets. (This process method is based on [maml](https://github.com/cbfinn/maml)).
@@ -12,28 +12,31 @@ For mini-Imagenet experiments, please download [mini-Imagenet](https://drive.goo
 For tiered-Imagenet experiments, please download [tiered-Imagenet](https://github.com/yaoyao-liu/tiered-imagenet-tools).
 
 ## Train
-mini-Imagenet 5 way 1 shot:
+
+Firstly set the dataset path in the config.py.
+
+Then, mini-Imagenet 5 way 1 shot:
 
 ```
-python miniimagenet_train_one_shot.py -w 5 -s 1 -b 15
+python train.py -way 5 -shot 1 -query 15 -dataset miniimagenet
 ```
 
 mini-Imagenet 5 way 5 shot:
 
 ```
-python miniimagenet_train_few_shot.py -w 5 -s 5 -b 10
+python train.py -way 5 -shot 5 -query 15 -dataset miniimagenet
 ```
 
 tiered-Imagenet 5 way 1 shot:
 
 ```
-python tieredimagenet_train_one_shot.py -w 5 -s 1 -b 15
+python train.py -way 5 -shot 1 -query 15 -dataset tieredimagenet
 ```
 
 tiered-Imagenet 5 way 5 shot:
 
 ```
-python tieredimagenet_train_few_shot.py -w 5 -s 5 -b 10
+python train.py -way 5 -shot 5 -query 15 -dataset tieredimagenet
 ```
 
 you can change -b parameter based on your GPU memory. Currently It will load my trained model, if you want to train from scratch, you can delete models by yourself.
@@ -43,7 +46,7 @@ you can change -b parameter based on your GPU memory. Currently It will load my 
 mini-Imagenet 5way 1 shot:
 
 ```
-python miniimagenet_test_one_shot.py -w 5 -s 1
+python test.py -way 5 -shot 1 -query 5 -dataset miniimagenet
 ```
 
 Other experiments' testings are similar.
