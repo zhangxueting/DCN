@@ -13,7 +13,7 @@ import scipy.stats
 from task_generator import TaskGenerator,split_fine_grained_dataset,mini_imagenet_folder
 from network import DCN,EmbeddingSENet
 
-parser = argparse.ArgumentParser(description="Variational Dense Relation Network for Few-Shot Learning")
+parser = argparse.ArgumentParser(description="RelationNet2/DCN for Few-Shot Learning")
 parser.add_argument("--way",type = int, default = 5)  # num_class
 parser.add_argument("--shot",type = int, default = 5) # num_support_per_class
 parser.add_argument("--query",type = int, default = 15) # num_query_per_class
